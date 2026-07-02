@@ -79,6 +79,10 @@ export default function useWishes() {
 
   async function clearAllWishes() {
     if (!isFirebaseConfigured) return
+    // Mark as already-seeded *before* clearing, so the onSnapshot auto-seed
+    // above doesn't race this and silently re-add sample wishes the moment
+    // the collection becomes empty (defeating the point of "clear all").
+    hasSeededRef.current = true
     const snapshot = await getDocs(wishesCollection)
     await Promise.all(snapshot.docs.map((docSnapshot) => deleteDoc(docSnapshot.ref)))
   }
@@ -86,7 +90,6 @@ export default function useWishes() {
   async function resetToSampleWishes() {
     if (!isFirebaseConfigured) return
     await clearAllWishes()
-    hasSeededRef.current = false
     await Promise.all(
       sampleWishes.map((sample) =>
         addDoc(wishesCollection, {
