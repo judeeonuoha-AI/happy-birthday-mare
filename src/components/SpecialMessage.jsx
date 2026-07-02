@@ -11,7 +11,7 @@ const PERSONAL_MESSAGE = [
   "Happy birthday, Mare. Here's to us, and to many more of your birthdays by your side.",
 ]
 
-const SIGNATURE = 'Yours always, Jude'
+const SIGNATURE = "President Mare's Fan Club"
 
 export default function SpecialMessage() {
   return (
