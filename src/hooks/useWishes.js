@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   addDoc,
   collection,
@@ -32,33 +32,22 @@ function toWish(docSnapshot) {
 // everyone else's screen (including the birthday celebrant's) without a
 // refresh. Falls back to local, read-only sample data if Firebase hasn't
 // been configured yet (see README.md for setup steps).
+//
+// Note: sample wishes are only ever added via the explicit "Restore sample
+// wishes" admin action (resetToSampleWishes below) - never automatically
+// when the collection is empty. An auto-seed-on-empty used to exist here,
+// but any visitor with an older cached build (with different/no sample
+// wishes baked in) could race a genuine "clear all" and silently repopulate
+// the shared wall with stale data. Explicit-only avoids that entirely.
 export default function useWishes() {
   const [wishes, setWishes] = useState(isFirebaseConfigured ? [] : sampleWishes)
   const [loading, setLoading] = useState(isFirebaseConfigured)
-  const hasSeededRef = useRef(false)
 
   useEffect(() => {
     if (!isFirebaseConfigured) return
 
-    const unsubscribe = onSnapshot(wishesQuery, async (snapshot) => {
+    const unsubscribe = onSnapshot(wishesQuery, (snapshot) => {
       setLoading(false)
-
-      // Seed the collection with sample wishes the very first time it's
-      // ever empty, so the wall isn't blank before anyone has submitted.
-      if (snapshot.empty && !hasSeededRef.current) {
-        hasSeededRef.current = true
-        await Promise.all(
-          sampleWishes.map((sample) =>
-            addDoc(wishesCollection, {
-              name: sample.name,
-              message: sample.message,
-              createdAt: serverTimestamp(),
-            })
-          )
-        )
-        return
-      }
-
       setWishes(snapshot.docs.map(toWish))
     })
 
@@ -79,10 +68,6 @@ export default function useWishes() {
 
   async function clearAllWishes() {
     if (!isFirebaseConfigured) return
-    // Mark as already-seeded *before* clearing, so the onSnapshot auto-seed
-    // above doesn't race this and silently re-add sample wishes the moment
-    // the collection becomes empty (defeating the point of "clear all").
-    hasSeededRef.current = true
     const snapshot = await getDocs(wishesCollection)
     await Promise.all(snapshot.docs.map((docSnapshot) => deleteDoc(docSnapshot.ref)))
   }
